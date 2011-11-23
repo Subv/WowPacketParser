@@ -565,18 +565,18 @@ namespace WowPacketParser.Parsing.Parsers
             if (CountOfBytes4 > 0)
                 bytes4 = packet.ReadBytes((int)CountOfBytes4);
 
-            packet.ReadUInt32("Flag"); // can be 0, 4 or 8, 8 = normal world, others are unknown
+            packet.ReadUInt32("Flag");
         }
-
+ 
         [Parser(Opcode.SMSG_SET_PHASE_SHIFT,ClientVersionBuild.V4_2_2_14545)] // Not exactly sure when it was added
         public static void HandlePhaseShift422(Packet packet)
         {
-            var GuidFlag = packet.ReadEnum<UnknownFlags>("Guid Mask Flags",TypeCode.Byte);
+            var GuidFlag = packet.ReadEnum<BitMask>("Guid Mask Flags",TypeCode.Byte);
 
-            if (GuidFlag.HasFlag(UnknownFlags.Byte0))
+            if (GuidFlag.HasFlag(BitMask.Byte0))
                 packet.ReadGuidByte(0);
 
-            if (GuidFlag.HasFlag(UnknownFlags.Byte4))
+            if (GuidFlag.HasFlag(BitMask.Byte4))
                 packet.ReadGuidByte(4);// packet.ReadByte("Unk Byte 3");
 
             var CountOfBytes1 = packet.ReadUInt32("Count of bytes 1");
@@ -588,12 +588,12 @@ namespace WowPacketParser.Parsing.Parsers
                 bytes1 = packet.ReadBytes((int)CountOfBytes1 - 2);
             }
 
-            if (GuidFlag.HasFlag(UnknownFlags.Byte3))
+            if (GuidFlag.HasFlag(BitMask.Byte3))
                 packet.ReadGuidByte(3);// packet.ReadByte("Unk Byte 4");
 
             packet.ReadUInt32("Flag? "); // this is 0, 4 or 8, if 8 then its normal world
 
-            if (GuidFlag.HasFlag(UnknownFlags.Byte2))
+            if (GuidFlag.HasFlag(BitMask.Byte2))
                 packet.ReadGuidByte(2);// packet.ReadByte("Unk Byte 5"); // flag Unk4
 
             var CountOfBytes2 = packet.ReadUInt32("Count of bytes 2");
@@ -605,7 +605,7 @@ namespace WowPacketParser.Parsing.Parsers
                 bytes2 = packet.ReadBytes((int)CountOfBytes2 - 2);
             }
 
-            if (!GuidFlag.HasFlag(UnknownFlags.Byte2))
+            if (!GuidFlag.HasFlag(BitMask.Byte2))
                 packet.ReadGuidByte(6);// packet.ReadByte("Unk Byte 6");
 
             var CountOfBytes3 = packet.ReadUInt32("Count of bytes 3");
@@ -617,7 +617,7 @@ namespace WowPacketParser.Parsing.Parsers
                 bytes3 = packet.ReadBytes((int)CountOfBytes3 - 2);
             }
 
-            if (GuidFlag.HasFlag(UnknownFlags.Byte7))
+            if (GuidFlag.HasFlag(BitMask.Byte7))
                 packet.ReadGuidByte(7);// packet.ReadByte("Unk Byte 7");
 
             var CountOfBytes4 = packet.ReadUInt32("Count of bytes 4");
@@ -629,10 +629,10 @@ namespace WowPacketParser.Parsing.Parsers
                 bytes4 = packet.ReadBytes((int)CountOfBytes4 - 2);
             }
 
-            if (GuidFlag.HasFlag(UnknownFlags.Byte1))
+            if (GuidFlag.HasFlag(BitMask.Byte1))
                 packet.ReadGuidByte(1);// packet.ReadByte("Unk Byte 8");
 
-            if (GuidFlag.HasFlag(UnknownFlags.Byte5))
+            if (GuidFlag.HasFlag(BitMask.Byte5))
                 packet.ReadGuidByte(5);// packet.ReadByte("Unk Byte 9");
 
             packet.Writer.WriteLine("Guid: " + packet.ReadBitstreamedGuid().ToString());

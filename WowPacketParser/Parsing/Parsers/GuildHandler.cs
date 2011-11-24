@@ -1,6 +1,7 @@
 using System;
 using WowPacketParser.Enums;
 using WowPacketParser.Misc;
+using Guid = WowPacketParser.Misc.Guid;
 
 namespace WowPacketParser.Parsing.Parsers
 {
@@ -25,6 +26,43 @@ namespace WowPacketParser.Parsing.Parsers
         public static void HandleGuild(Packet packet)
         {
             // Moved here to have all Guild related opcodes together
+        }
+
+        [Parser(Opcode.CMSG_GUILD_ROSTER, ClientVersionBuild.V4_2_2_14545)]
+        public static void HandleGuildRoster(Packet packet)
+        {
+            // FIXME bytes 4 and 5 and bits equivalence
+            var bits = new bool[8];
+            for (int c = 0; c < 8; c++)
+                bits[c] = packet.ReadBit();
+
+            var bytes = new byte[8];
+
+            if (bits[7])
+                bytes[7] = (byte)(packet.ReadByte() ^ 1);
+
+            if (bits[0])
+                bytes[0] = (byte)(packet.ReadByte() ^ 1);
+
+            if (bits[4])
+                bytes[1] = (byte)(packet.ReadByte() ^ 1);
+
+            if (bits[5])
+                bytes[2] = (byte)(packet.ReadByte() ^ 1);
+
+            if (bits[6])
+                bytes[6] = (byte)(packet.ReadByte() ^ 1);
+
+            if (bits[1])
+                bytes[3] = (byte)(packet.ReadByte() ^ 1);
+
+            if (bits[2])
+                bytes[4] = (byte)(packet.ReadByte() ^ 1);
+
+            if (bits[3])
+                bytes[5] = (byte)(packet.ReadByte() ^ 1);
+
+            packet.Writer.WriteLine("GUID: {0}", new Guid(BitConverter.ToUInt64(bytes, 0)));
         }
 
         [Parser(Opcode.SMSG_GUILD_ROSTER)]
@@ -67,11 +105,26 @@ namespace WowPacketParser.Parsing.Parsers
             }
         }
 
+        [Parser(Opcode.SMSG_GUILD_ROSTER, ClientVersionBuild.V4_2_2_14545)]
+        public static void HandleGuildRoster422(Packet packet)
+        {
+            packet.Writer.WriteLine(packet.AsHex()); // FIXME
+        }
+
+        [Parser(Opcode.SMSG_COMPRESSED_GUILD_ROSTER)]
+        public static void HandleCompressedGuildRoster(Packet packet)
+        {
+            HandleGuildRoster422(packet.Inflate(packet.ReadInt32()));
+        }
+
         [Parser(Opcode.CMSG_GUILD_QUERY)]
         public static void HandleGuildQuery(Packet packet)
         {
             if (ClientVersion.AddedInVersion(ClientVersionBuild.V4_0_6_13596)) // Not sure when it was changed
+            {
                 packet.ReadGuid("Guild GUID");
+                packet.ReadGuid("Player GUID");
+            }
             else
                 packet.ReadUInt32("Guild Id");
         }
@@ -201,7 +254,10 @@ namespace WowPacketParser.Parsing.Parsers
         [Parser(Opcode.SMSG_GUILD_EVENT)]
         public static void HandleGuildEvent(Packet packet)
         {
-            packet.ReadEnum<GuildEventType>("Event Type", TypeCode.Byte);
+            if (ClientVersion.AddedInVersion(ClientVersionBuild.V4_2_2_14545))
+                packet.ReadEnum<GuildEventType442>("Event Type", TypeCode.Byte);
+            else
+                packet.ReadEnum<GuildEventType>("Event Type", TypeCode.Byte);
             var size = packet.ReadByte("Param Count");
             for (var i = 0; i < size; i++)
                 packet.ReadCString("Param", i);
@@ -462,6 +518,17 @@ namespace WowPacketParser.Parsing.Parsers
             }
         }
 
+        [Parser(Opcode.CMSG_GUILDFINDER_JOIN)]
+        public static void HandleGuildFinderJoin(Packet packet)
+        {
+            packet.ReadEnum <GuildFinderCommand>("Command", TypeCode.Byte);
+            packet.ReadEnum<GuildFinderOptionsAvailability>("Availability", TypeCode.UInt32);
+            packet.ReadEnum<GuildFinderOptionsRoles>("Class Roles", TypeCode.UInt32);
+            packet.ReadEnum<GuildFinderOptionsInterest>("Guild Interests", TypeCode.UInt32);
+            packet.ReadEnum<GuildFinderOptionsLevel>("Level", TypeCode.UInt32);
+            packet.ReadCString("Comment");
+        }
+
         // Missing Opcodes
         //[Parser(Opcode.CMSG_MAELSTROM_RENAME_GUILD)]
         //[Parser(Opcode.SMSG_GUILD_DECLINE)]
@@ -560,7 +627,7 @@ namespace WowPacketParser.Parsing.Parsers
         {
             packet.ReadUInt32("Unk UInt3 1");
             packet.ReadGuid("Petition GUID");
-            packet.ReadGuid("Owner GUID");
+            packet.ReadGuid("Target GUID");
         }
 
         [Parser(Opcode.CMSG_TURN_IN_PETITION)]

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using WowPacketParser.Enums;
 using WowPacketParser.Enums.Version;
 using WowPacketParser.Misc;
@@ -212,13 +211,13 @@ namespace WowPacketParser.Parsing.Parsers
         }
 
         [Parser(Opcode.SMSG_CHAR_ENUM, ClientVersionBuild.V4_2_2_14545)]
-        public static void HandleCharEnum442(Packet packet)
+        public static void HandleCharEnum422(Packet packet)
         {
             packet.ReadByte("Unk Flag");
             int count = packet.ReadInt32("Char Count");
             packet.ReadInt32("Unk Count");
 
-            bool[,] bits = new bool[count, 17];
+            var bits = new bool[count, 17];
 
             for (int c = 0; c < count; c++)
                 for (int j = 0; j < 17; j++)
@@ -226,8 +225,8 @@ namespace WowPacketParser.Parsing.Parsers
 
             for (int c = 0; c < count; c++)
             {
-                byte[] low = new byte[8];
-                byte[] guild = new byte[8];
+                var low = new byte[8];
+                var guild = new byte[8];
                 packet.ReadCString("Name", c);
 
                 if (bits[c, 0])
@@ -331,7 +330,7 @@ namespace WowPacketParser.Parsing.Parsers
         [Parser(Opcode.SMSG_COMPRESSED_CHAR_ENUM)]
         public static void HandleCompressedCharEnum(Packet packet)
         {
-            HandleCharEnum442(packet.Inflate(packet.ReadInt32()));
+            HandleCharEnum422(packet.Inflate(packet.ReadInt32()));
         }
 
         [Parser(Opcode.SMSG_PLAYER_VEHICLE_DATA)]

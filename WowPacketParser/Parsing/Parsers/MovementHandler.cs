@@ -206,15 +206,18 @@ namespace WowPacketParser.Parsing.Parsers
             if (flags.HasAnyFlag(SplineFlag.AnimationTier))
             {
                 packet.ReadEnum<MovementAnimationState>("Animation State", TypeCode.Byte);
-
-                packet.ReadInt32("Unk Int32 1");
+                packet.ReadInt32("Asynctime in ms"); // Async-time in ms
             }
 
-            if (flags.HasAnyFlag(SplineFlag.Falling)) // Could be SplineFlag.UsePathSmoothing
+            // Cannot find anything similar to this in 4.2.2 client
+            if (ClientVersion.RemovedInVersion(ClientVersionBuild.V4_2_2_14545))
             {
-                packet.ReadInt32("Unknown");
-                packet.ReadInt16("Unknown");
-                packet.ReadInt16("Unknown");
+                if (flags.HasAnyFlag(SplineFlag.Falling)) // Could be SplineFlag.UsePathSmoothing
+                {
+                    packet.ReadInt32("Unknown");
+                    packet.ReadInt16("Unknown");
+                    packet.ReadInt16("Unknown");
+                }
             }
 
             packet.ReadInt32("Move Time");
@@ -222,40 +225,74 @@ namespace WowPacketParser.Parsing.Parsers
             if (flags.HasAnyFlag(SplineFlag.Trajectory))
             {
                 packet.ReadSingle("Vertical Speed");
-
                 packet.ReadInt32("Unk Int32 2");
             }
 
             var waypoints = packet.ReadInt32("Waypoints");
 
-            var newpos = packet.ReadVector3("Waypoint 0");
-
-            if (waypoints >= 3) // Hardcoded number, i have not seen any creature with less than 3 waypoints to have a scripted movement behaviour
-            {
-                Waypoint wp = new Waypoint
-                {
-                    X = newpos.X,
-                    Y = newpos.Y,
-                    Z = newpos.Z,
-                    NpcEntry = guid.GetEntry(),
-                    Id = 0
-                };
-
-                Stuffing.Waypoints.TryAdd(Tuple.Create<uint, uint>(guid.GetEntry(), wp.Id), wp);
-                SQL.SQLStore.WriteData(SQL.Stores.WaypointStore.GetCommand(wp));
-            }
-
             if (flags.HasAnyFlag(SplineFlag.Flying | SplineFlag.CatmullRom))
-                for (var i = 0; i < waypoints - 1; i++)
-                    packet.ReadVector3("Waypoint " + (i + 1));
+            {
+                var wp1 = packet.ReadVector3("Waypoint", 0);
+
+                if (waypoints >= 4)
+                {
+                    Waypoint wp = new Waypoint
+                    {
+                        X = wp1.X,
+                        Y = wp1.Y,
+                        Z = wp1.Z,
+                        NpcEntry = guid.GetEntry(),
+                        Id = 0
+                    };
+
+                    Stuffing.Waypoints.TryAdd(Tuple.Create<uint, uint>(guid.GetEntry(), wp.Id), wp);
+                    SQL.SQLStore.WriteData(SQL.Stores.WaypointStore.GetCommand(wp));
+                }
+
+                for (var i = 1; i < waypoints; i++)
+                {
+                    var wpi = packet.ReadVector3("Waypoint", i);
+                    if (waypoints >= 4)
+                    {
+                        Waypoint wp = new Waypoint
+                        {
+                            X = wpi.X,
+                            Y = wpi.Y,
+                            Z = wpi.Z,
+                            NpcEntry = guid.GetEntry(),
+                            Id = (uint)i
+                        };
+
+                        Stuffing.Waypoints.TryAdd(Tuple.Create<uint, uint>(guid.GetEntry(), wp.Id), wp);
+                        SQL.SQLStore.WriteData(SQL.Stores.WaypointStore.GetCommand(wp));
+                    }
+                }
+            }
             else
             {
+                var newpos = packet.ReadVector3("Waypoint Endpoint");
+
+                if (waypoints >= 4)
+                {
+                    Waypoint wp = new Waypoint
+                    {
+                        X = newpos.X,
+                        Y = newpos.Y,
+                        Z = newpos.Z,
+                        NpcEntry = guid.GetEntry(),
+                        Id = 0
+                    };
+
+                    Stuffing.Waypoints.TryAdd(Tuple.Create<uint, uint>(guid.GetEntry(), wp.Id), wp);
+                    SQL.SQLStore.WriteData(SQL.Stores.WaypointStore.GetCommand(wp));
+                }
+
                 var mid = new Vector3();
                 mid.X = (pos.X + newpos.X) * 0.5f;
                 mid.Y = (pos.Y + newpos.Y) * 0.5f;
                 mid.Z = (pos.Z + newpos.Z) * 0.5f;
 
-                for (var i = 0; i < waypoints - 1; i++)
+                for (var i = 1; i < waypoints; i++)
                 {
                     var vec = packet.ReadPackedVector3();
                     vec.X += mid.X;
@@ -264,7 +301,7 @@ namespace WowPacketParser.Parsing.Parsers
 
                     packet.Writer.WriteLine("Waypoint " + (i + 1) + ": " + vec);
                     
-                    if (waypoints >= 3) // Hardcoded number, i have not seen any creature with less than 3 waypoints to have a scripted movement behaviour
+                    if (waypoints >= 4)
                     {
                         Waypoint wp = new Waypoint
                         {

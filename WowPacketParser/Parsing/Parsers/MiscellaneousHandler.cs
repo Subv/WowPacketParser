@@ -319,12 +319,12 @@ namespace WowPacketParser.Parsing.Parsers
         public static void HandlePowerUpdate(Packet packet)
         {
             packet.ReadPackedGuid("GUID");
-            packet.ReadEnum<PowerType>("Type", TypeCode.Byte);
 
             if (ClientVersion.AddedInVersion(ClientVersionBuild.V4_0_1_13164))
-                packet.ReadUInt32("Unk int32");
+                packet.ReadInt32("Unk int32");
 
-            packet.ReadUInt32("Value");
+            packet.ReadEnum<PowerType>("Type", TypeCode.Byte);
+            packet.ReadInt32("Value");
         }
 
         [Parser(Opcode.CMSG_SET_ACTIONBAR_TOGGLES)]
@@ -419,8 +419,16 @@ namespace WowPacketParser.Parsing.Parsers
         [Parser(Opcode.CMSG_TIME_SYNC_RESP)]
         public static void HandleTimeSyncResp(Packet packet)
         {
-            packet.ReadUInt32("Counter");
-            packet.ReadUInt32("Ticks");
+            if (ClientVersion.AddedInVersion(ClientVersionBuild.V4_2_2_14545)) // no idea when this was added exactly
+            {
+                packet.ReadUInt32("Ticks");
+                packet.ReadUInt32("Counter");
+            }
+            else
+            {
+                packet.ReadUInt32("Counter");
+                packet.ReadUInt32("Ticks");
+            }
         }
 
         // Guessed
@@ -459,6 +467,13 @@ namespace WowPacketParser.Parsing.Parsers
             packet.ReadUInt32("Today");
             packet.ReadUInt32("Yesterday");
             packet.ReadUInt32("Life Time Kills");
+        }
+
+        [Parser(Opcode.CMSG_ENTER_WORLD)]
+        public static void HandleClientEnterWorld(Packet packet)
+        {
+            packet.ReadByte("Mask?");
+            packet.ReadEntryWithName<UInt32>(StoreNameType.Map, "Map");
         }
 
         [Parser(Opcode.SMSG_DUEL_OUTOFBOUNDS)]

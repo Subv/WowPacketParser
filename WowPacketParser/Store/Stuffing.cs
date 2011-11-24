@@ -54,12 +54,12 @@ namespace WowPacketParser.Store
 
         /* Key: Misc */
 
-        // Race-Class start information
+        // Start info (Race, Class)
         public static readonly ConcurrentDictionary<Tuple<Race, Class>, StartInfo> StartInformation =
             new ConcurrentDictionary<Tuple<Race, Class>, StartInfo>();
 
-        // Loot
-        public static readonly ConcurrentDictionary<Tuple<uint, LootType>, Loot> Loots =
-            new ConcurrentDictionary<Tuple<uint, LootType>, Loot>();
+        // Loot (ItemId, LootType)
+        public static readonly ConcurrentDictionary<Tuple<uint, ObjectType>, Loot> Loots =
+            new ConcurrentDictionary<Tuple<uint, ObjectType>, Loot>();
     }
 }

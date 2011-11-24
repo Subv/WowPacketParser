@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Text;
 using WowPacketParser.Enums;
 using WowPacketParser.Misc;
@@ -26,10 +29,10 @@ namespace WowPacketParser.Store.SQL
                                           "RequiredFactionId1", "RequiredFactionId2", "RequiredFactionValue1",
                                           "RequiredFactionValue2", "NextQuestId", "RewardXPId", "RewardOrRequiredMoney",
                                           "RewardMoneyMaxLevel", "RewardSpell", "RewardSpellCast", "RewardHonor",
-                                          "RewardHonorMultiplier", "SourceItemId", "Hexify((int)Flags)", "RewardTitleId",
-                                          "RequiredPlayerKills", "RewardTalents", "RewardArenaPoints",
+                                          "RewardHonorMultiplier", "SourceItemId", "Flags", "RewardTitleId",
+                                          "RequiredPlayerKills", "RewardTalents", "RewardArenaPoints", "RewardSkillId",
                                           "RewardSkillPoints", "RewardReputationMask", "QuestGiverPortrait",
-                                          "QuestTurnInPortrait", "UnknownUInt32", "RewardItemId1", "RewardItemId2",
+                                          "QuestTurnInPortrait", "RewardItemId1", "RewardItemId2",
                                           "RewardItemId3", "RewardItemId4", "RewardItemCount1", "RewardItemCount2",
                                           "RewardItemCount3", "RewardItemCount4", "RewardChoiceItemId1",
                                           "RewardChoiceItemId2", "RewardChoiceItemId3", "RewardChoiceItemId4",
@@ -102,11 +105,11 @@ namespace WowPacketParser.Store.SQL
                     quest.Value.RewardTalents + cs +
                     quest.Value.RewardArenaPoints + cs +
                     // quest.Value.RewardUnknown + cs + // Always 0
+                    quest.Value.RewardSkillId + cs +
                     quest.Value.RewardSkillPoints + cs +
                     quest.Value.RewardReputationMask + cs +
                     quest.Value.QuestGiverPortrait + cs +
-                    quest.Value.QuestTurnInPortrait + cs +
-                    quest.Value.UnknownUInt32 + cs);
+                    quest.Value.QuestTurnInPortrait + cs);
 
                 foreach (var n in quest.Value.RewardItemId)
                     sqlQuery.Append(n + cs);
@@ -427,7 +430,7 @@ namespace WowPacketParser.Store.SQL
                                       };
 
             // Delete
-            sqlQuery.Append(SQLUtil.DeleteQuerySingle(Stuffing.GameObjectTemplates.Keys, primaryKey, tableName));
+            sqlQuery.Append(SQLUtil.DeleteQuerySingle(Stuffing.NpcTexts.Keys, primaryKey, tableName));
 
             // Insert
             sqlQuery.Append(SQLUtil.InsertQueryHeader(tableStructure, tableName));
@@ -453,11 +456,146 @@ namespace WowPacketParser.Store.SQL
                     foreach (var n in a)
                         sqlQuery.Append(n + cs);
 
+                var itr = 0;
                 foreach (var a in npcText.Value.EmoteIds)
                     foreach (int n in a)
-                        sqlQuery.Append(n + cs); // TODO: Do not print comma on the last of the last emote
+                    {
+                        itr++;
+                        sqlQuery.Append(n);
+                        if (itr != npcText.Value.EmoteIds.Length * a.Length)
+                            sqlQuery.Append(cs);
+                    }
 
                 sqlQuery.Append(")," + Environment.NewLine);
+            }
+
+            return sqlQuery.ReplaceLast(',', ';').ToString();
+        }
+
+        public static string Gossip()
+        {
+            if (Stuffing.Gossips.IsEmpty)
+                return string.Empty;
+
+            var sqlQuery = new StringBuilder(String.Empty);
+
+            // Not TDB structure (data got 32 fields, not 24)
+            const string tableName1 = "gossip_menu";
+            string[] primaryKey1 = {"entry", "text_id"};
+            string[] tableStructure1 = {"entry", "text_id"};
+
+            const string tableName2 = "gossip_menu_option";
+            const string primaryKey2 = "menu_id";
+            string[] tableStructure2 = {
+                                           "menu_id", "id", "option_icon", "option_text", "box_coded",
+                                           "box_money", "box_text"
+                                       };
+
+            // Delete1
+            sqlQuery.Append(SQLUtil.DeleteQueryDouble(Stuffing.Gossips.Keys, primaryKey1, tableName1));
+
+            // Insert1
+            sqlQuery.Append(SQLUtil.InsertQueryHeader(tableStructure1, tableName1));
+
+            // Insert1 rows
+            foreach (var pair in Stuffing.Gossips.Keys)
+                sqlQuery.Append("(" + pair.Item1 + cs + pair.Item2 + ")," + Environment.NewLine);
+
+            sqlQuery = sqlQuery.ReplaceLast(',', ';');
+
+            // We need a collection of the first items of a tuple
+            var keyCollection = new Collection<uint>();
+            foreach (var key in Stuffing.Gossips.Keys)
+                keyCollection.Add(key.Item1);
+
+            // Delete2
+            sqlQuery.Append(SQLUtil.DeleteQuerySingle(keyCollection, primaryKey2, tableName2));
+
+            // If no gossip options exists, return what we got so far
+            if (!Stuffing.Gossips.Values.Any(gossip => gossip.GossipOptions != null))
+                return sqlQuery.ToString();
+
+            // Insert2
+            sqlQuery.Append(SQLUtil.InsertQueryHeader(tableStructure2, tableName2));
+
+            // Insert2 rows
+            foreach (var gossip in Stuffing.Gossips)
+            {
+                if (gossip.Value.GossipOptions != null)
+                    foreach (var gossipOption in gossip.Value.GossipOptions)
+                    {
+                        sqlQuery.Append(
+                            "(" +
+                            gossip.Key.Item1 + cs +
+                            gossipOption.Index + cs +
+                            gossipOption.OptionIcon + cs +
+                            SQLUtil.Stringify(gossipOption.OptionText) + cs +
+                            (gossipOption.Box ? "1" : "0") + cs +
+                            gossipOption.RequiredMoney + cs +
+                            SQLUtil.Stringify(gossipOption.BoxText) + ")," + Environment.NewLine);
+                    }
+            }
+
+            return sqlQuery.ReplaceLast(',', ';').ToString();
+        }
+
+        public static string Loot()
+        {
+            if (Stuffing.Loots.IsEmpty)
+                return string.Empty;
+
+            var sqlQuery = new StringBuilder(String.Empty);
+
+            // Not TDB structure
+            const string tableName = "LootTemplate";
+            string[] primaryKey = { "Id", "Type" };
+            string[] tableStructure = {"Id", "Type", "ItemId", "Count"};
+
+            // Can't cast the collection directly
+            ICollection<Tuple<uint, uint>> lootKeys = new Collection<Tuple<uint, uint>>();
+            foreach (var tuple in Stuffing.Loots.Keys)
+            {
+                lootKeys.Add(new Tuple<uint, uint>(tuple.Item1, (uint)tuple.Item2));
+            }
+
+            // Delete
+            sqlQuery.Append(SQLUtil.DeleteQueryDouble(lootKeys, primaryKey, tableName));
+
+            // Insert
+            sqlQuery.Append(SQLUtil.InsertQueryHeader(tableStructure, tableName));
+
+            // Insert rows
+            foreach (var loot in Stuffing.Loots)
+            {
+                StoreNameType storeType = StoreNameType.None;
+                switch (Stuffing.Loots.Keys.First().Item2)
+                {
+                    case ObjectType.Item:
+                        storeType = StoreNameType.Item;
+                        break;
+                    case ObjectType.Corpse:
+                    case ObjectType.Unit:
+                        storeType = StoreNameType.Unit;
+                        break;
+                    case ObjectType.Container:
+                    case ObjectType.GameObject:
+                        storeType = StoreNameType.GameObject;
+                        break;
+                }
+                sqlQuery.Append("-- " + StoreGetters.GetName(storeType, (int) loot.Key.Item1) +
+                                "(" + loot.Value.Gold + " gold)" + Environment.NewLine);
+                foreach (var lootItem in loot.Value.LootItems)
+                {
+                    sqlQuery.Append(
+                        "(" +
+                        loot.Key.Item1 + cs +
+                        (int) loot.Key.Item2 + cs +
+                        lootItem.ItemId + cs +
+                        lootItem.Count + ")," + " -- " +
+                        StoreGetters.GetName(StoreNameType.Item, (int)lootItem.ItemId, false) +
+                        Environment.NewLine);
+
+                }
             }
 
             return sqlQuery.ReplaceLast(',', ';').ToString();

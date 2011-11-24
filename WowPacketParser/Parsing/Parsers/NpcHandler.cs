@@ -221,6 +221,7 @@ namespace WowPacketParser.Parsing.Parsers
             gossip = Stuffing.Gossips.GetOrAdd(Tuple.Create<uint,uint>(guid.GetEntry(),menuid), gossip);
             
             var count = packet.ReadUInt32("Amount of Options");
+
             for (var i = 0; i < count; i++)
             {
                 GossipOption opt = new GossipOption

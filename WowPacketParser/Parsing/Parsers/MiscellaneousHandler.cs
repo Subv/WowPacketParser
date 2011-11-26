@@ -32,6 +32,22 @@ namespace WowPacketParser.Parsing.Parsers
             packet.ReadPackedGuid("GUID");
         }
 
+        [Parser(Opcode.CMSG_REQUEST_VEHICLE_SWITCH_SEAT)]
+        public static void HandleRequestVehicleSwitchSeat(Packet packet)
+        {
+            packet.ReadPackedGuid("GUID");
+            packet.ReadByte("Seat");
+        }
+
+        [Parser(Opcode.CMSG_CHANGE_SEATS_ON_CONTROLLED_VEHICLE)]
+        public static void HandleChangeSeatsOnControlledVehicle(Packet packet)
+        {
+            packet.ReadPackedGuid("Vehicle GUID");
+            // FIXME: 3.3.3a has some data here
+            packet.ReadPackedGuid("Accesory GUID");
+            packet.ReadByte("Seat");
+        }
+
         [Parser(Opcode.SMSG_CROSSED_INEBRIATION_THRESHOLD)]
         public static void HandleCrossedInerbriationThreshold(Packet packet)
         {
@@ -209,12 +225,17 @@ namespace WowPacketParser.Parsing.Parsers
             var level = packet.ReadInt32("Level");
             packet.ReadInt32("Health");
 
-            var powerCount = ClientVersion.AddedInVersion(ClientType.WrathOfTheLichKing) ? 7 : 5;
+            var powerCount = 5;
+            if (ClientVersion.AddedInVersion(ClientType.WrathOfTheLichKing))
+                powerCount = 7;
+            if (ClientVersion.AddedInVersion(ClientType.Cataclysm))
+                powerCount = 11;
+
             for (var i = 0; i < powerCount; i++)
-                packet.ReadInt32("Power " + (PowerType)i);
+                packet.ReadEnum<PowerType>("Power", TypeCode.Int32, i);
 
             for (var i = 0; i < 5; i++)
-                packet.ReadInt32("StatType " + (StatType)i);
+                packet.ReadEnum<StatType>("StatType", TypeCode.Int32, i);
 
             if (SessionHandler.LoggedInCharacter != null)
                 SessionHandler.LoggedInCharacter.Level = level;
@@ -469,10 +490,10 @@ namespace WowPacketParser.Parsing.Parsers
             packet.ReadUInt32("Life Time Kills");
         }
 
-        [Parser(Opcode.CMSG_LOAD_SCREEN)]
+        [Parser(Opcode.CMSG_LOAD_SCREEN)] // Also named CMSG_LOADING_SCREEN_NOTIFY
         public static void HandleClientEnterWorld(Packet packet)
         {
-            packet.ReadByte("Mask?"); // Loading start: 0x80, (near) loading end: 0x0
+            packet.Writer.WriteLine("Loading: " + (packet.ReadBit() ? "true" : "false")); // Not sure on the meaning
             packet.ReadEntryWithName<UInt32>(StoreNameType.Map, "Map");
         }
 
@@ -538,6 +559,7 @@ namespace WowPacketParser.Parsing.Parsers
         [Parser(Opcode.SMSG_ENABLE_BARBER_SHOP)]
         [Parser(Opcode.SMSG_FISH_NOT_HOOKED)]
         [Parser(Opcode.SMSG_SUMMON_CANCEL)]
+        [Parser(Opcode.CMSG_MEETINGSTONE_INFO)]
         public static void HandleZeroLengthPackets(Packet packet)
         {
         }

@@ -32,6 +32,7 @@ namespace WowPacketParser.Parsing.Parsers
             packet.Writer.WriteLine("Icon Name: " + iconName);
         }
 
+        [Parser(Opcode.CMSG_TRAINER_BUY_SPELL)]
         [Parser(Opcode.SMSG_TRAINER_BUY_SUCCEEDED)]
         [Parser(Opcode.SMSG_TRAINER_BUY_FAILED)]
         public static void HandleServerTrainerBuySucceedeed(Packet packet)
@@ -97,41 +98,70 @@ namespace WowPacketParser.Parsing.Parsers
             Stuffing.NpcTrainers.TryAdd(guid.GetEntry(), npcTrainer);
         }
 
-        // WIP
+        
+        [Parser(Opcode.SMSG_LIST_INVENTORY)]
+        public static void HandleVendorInventoryList422(Packet packet)
+        {
+            var npcVendor = new NpcVendor();
+            var guid = packet.ReadGuid();
+
+            var itemCount = packet.ReadByte("Item Count");
+
+            packet.Writer.WriteLine("GUID: " + guid);
+
+            npcVendor.VendorItems = new List<VendorItem>((int)itemCount);
+            for (var i = 0; i < itemCount; i++)
+            {
+                var vendorItem = new VendorItem();
+
+                vendorItem.Slot = packet.ReadUInt32("Item Position", i);
+                vendorItem.ItemId = (uint)packet.ReadEntryWithName<Int32>(StoreNameType.Item, "Item ID", i);
+                packet.ReadInt32("Display ID", i);
+                vendorItem.MaxCount = packet.ReadInt32("Max Count", i);
+                packet.ReadInt32("Price", i);
+                packet.ReadInt32("Max Durability", i);
+                vendorItem.BuyCount = packet.ReadUInt32("Buy Count", i);
+                vendorItem.ExtendedCostId = packet.ReadUInt32("Extended Cost", i);
+            }
+
+            Stuffing.NpcVendors.TryAdd(guid.GetEntry(), npcVendor);
+        }
+
         [Parser(Opcode.SMSG_LIST_INVENTORY, ClientVersionBuild.V4_2_2_14545)]
         public static void HandleVendorInventoryList422(Packet packet)
         {
             var npcVendor = new NpcVendor();
-            var flags = packet.ReadEnum<UnknownFlags>("GUID Byte Mask", TypeCode.Byte);
 
-            if (flags.HasAnyFlag(UnknownFlags.Byte2))
+            var flags = packet.ReadEnum<BitMask>("GUID Byte Mask", TypeCode.Byte);
+
+            if (flags.HasAnyFlag(BitMask.Byte2))
                 packet.ReadGuidByte(2);
 
             var itemCount = packet.ReadUInt32("Item Count");
 
-            if (flags.HasAnyFlag(UnknownFlags.Byte5))
+            if (flags.HasAnyFlag(BitMask.Byte5))
                 packet.ReadGuidByte(5);
 
-            if (flags.HasAnyFlag(UnknownFlags.Byte0)) // Flag?
+            if (flags.HasAnyFlag(BitMask.Byte0)) // Flag?
                 packet.ReadGuidByte(0);
 
-            if (flags.HasAnyFlag(UnknownFlags.Byte1)) // Flag?
+            if (flags.HasAnyFlag(BitMask.Byte1)) // Flag?
                 packet.ReadGuidByte(1);
 
-            if (flags.HasAnyFlag(UnknownFlags.Byte3)) // Flag?
+            if (flags.HasAnyFlag(BitMask.Byte3)) // Flag?
                 packet.ReadGuidByte(3);
 
-            if (flags.HasAnyFlag(UnknownFlags.Byte4))
+            if (flags.HasAnyFlag(BitMask.Byte4))
                 packet.ReadGuidByte(4);
 
-            if (flags.HasAnyFlag(UnknownFlags.Byte7)) // Flag?
+            if (flags.HasAnyFlag(BitMask.Byte7)) // Flag?
                 packet.ReadGuidByte(7);
 
-            if (!flags.HasAnyFlag(UnknownFlags.Byte2)) // Flag?
+            if (!flags.HasAnyFlag(BitMask.Byte2)) // Flag?
                 packet.ReadGuidByte(6);
 
             var guid = packet.ReadBitstreamedGuid();
-            packet.Writer.WriteLine("GUID: " + guid);
+            packet.Writer.WriteLine("GUID: {0}", guid);
 
             npcVendor.VendorItems = new List<VendorItem>((int)itemCount);
             for (var i = 0; i < itemCount; i++)
@@ -150,33 +180,6 @@ namespace WowPacketParser.Parsing.Parsers
                 packet.ReadInt32("Price", i);
 
                 npcVendor.VendorItems.Add(vendorItem);
-            }
-
-            Stuffing.NpcVendors.TryAdd(guid.GetEntry(), npcVendor);
-        }
-
-        [Parser(Opcode.SMSG_LIST_INVENTORY, ClientVersionBuild.V1_12_1_5875, ClientVersionBuild.V4_2_0_14333)]
-        public static void HandleVendorInventoryList(Packet packet)
-        {
-            var npcVendor = new NpcVendor();
-
-            var guid = packet.ReadGuid("GUID");
-
-            var itemCount = packet.ReadByte("Item Count");
-
-            npcVendor.VendorItems = new List<VendorItem>(itemCount);
-            for (var i = 0; i < itemCount; i++)
-            {
-                var vendorItem = new VendorItem();
-
-                vendorItem.Slot = packet.ReadUInt32("Item Position", i);
-                vendorItem.ItemId = (uint)packet.ReadEntryWithName<Int32>(StoreNameType.Item, "Item ID", i);
-                packet.ReadInt32("Display ID", i);
-                vendorItem.MaxCount = packet.ReadInt32("Max Count", i);
-                packet.ReadInt32("Price", i);
-                packet.ReadInt32("Max Durability", i);
-                vendorItem.BuyCount = packet.ReadUInt32("Buy Count", i);
-                vendorItem.ExtendedCostId = packet.ReadUInt32("Extended Cost", i);
             }
 
             Stuffing.NpcVendors.TryAdd(guid.GetEntry(), npcVendor);

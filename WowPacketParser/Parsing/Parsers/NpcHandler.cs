@@ -100,7 +100,7 @@ namespace WowPacketParser.Parsing.Parsers
 
         
         [Parser(Opcode.SMSG_LIST_INVENTORY)]
-        public static void HandleVendorInventoryList422(Packet packet)
+        public static void HandleVendorInventoryList(Packet packet)
         {
             var npcVendor = new NpcVendor();
             var guid = packet.ReadGuid();

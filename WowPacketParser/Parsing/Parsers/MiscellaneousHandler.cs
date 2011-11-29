@@ -344,7 +344,7 @@ namespace WowPacketParser.Parsing.Parsers
             if (ClientVersion.AddedInVersion(ClientVersionBuild.V4_0_1_13164))
                 packet.ReadInt32("Unk int32");
 
-            packet.ReadEnum<PowerType>("Type", TypeCode.Byte);
+            packet.ReadEnum<PowerType>("Power type", TypeCode.Byte);
             packet.ReadInt32("Value");
         }
 
@@ -472,7 +472,7 @@ namespace WowPacketParser.Parsing.Parsers
         [Parser(Opcode.SMSG_SERVER_MESSAGE)]
         public static void HandleServerMessage(Packet packet)
         {
-            packet.ReadUInt32("Unk UInt32");
+            packet.ReadUInt32("Server Message DBC Id");
             packet.ReadCString("Message");
         }
 
@@ -567,6 +567,7 @@ namespace WowPacketParser.Parsing.Parsers
         [Parser(Opcode.SMSG_FISH_NOT_HOOKED)]
         [Parser(Opcode.SMSG_SUMMON_CANCEL)]
         [Parser(Opcode.CMSG_MEETINGSTONE_INFO)]
+        [Parser(Opcode.CMSG_RETURN_TO_GRAVEYARD)]
         public static void HandleZeroLengthPackets(Packet packet)
         {
         }

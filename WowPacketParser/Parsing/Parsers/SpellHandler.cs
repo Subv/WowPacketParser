@@ -274,7 +274,7 @@ namespace WowPacketParser.Parsing.Parsers
                         if ((mask & playerRuneState) != 0)
                             continue;
 
-                        packet.ReadByte("Unk Byte 1", i);
+                        packet.ReadByte("Rune Cooldown Passed", i);
                     }
                 }
 
@@ -658,6 +658,13 @@ namespace WowPacketParser.Parsing.Parsers
             packet.ReadByte("Unk Byte");
             packet.ReadGuid("GUID1");
             packet.ReadGuid("GUID2");
+        }
+
+        [Parser(Opcode.CMSG_CANCEL_CAST)]
+        public static void HandlePlayerCancelCast(Packet packet)
+        {
+            packet.ReadByte("Count");
+            packet.ReadEntryWithName<UInt32>(StoreNameType.Spell, "Spell Id");
         }
     }
 }

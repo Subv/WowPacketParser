@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using WowPacketParser.Enums;
 using WowPacketParser.Misc;
 using WowPacketParser.Store.Objects;
@@ -108,6 +109,42 @@ namespace WowPacketParser.Parsing.Parsers
             AddonHandler.ReadClientAddonsList(ref packet);
         }
 
+        [Parser(Opcode.CMSG_AUTH_SESSION, ClientVersionBuild.V4_3_0_15005)]
+        public static void HandleAuthSession430(Packet packet)
+        {
+            packet.ReadInt32("Int32");
+            packet.ReadByte("Digest (1)");
+            packet.ReadInt64("Int64");
+            packet.ReadInt32("Int32");
+            packet.ReadByte("Digest (2)");
+            packet.ReadInt32("Int32");
+            packet.ReadByte("Digest (3)");
+
+            packet.ReadInt32("Int32");
+            for (var i = 0; i < 7; i++)
+                packet.ReadByte("Digest (4)", i);
+
+            packet.ReadEnum<ClientVersionBuild>("Client Build", TypeCode.Int16);
+
+            for (var i = 0; i < 8; i++)
+                packet.ReadByte("Digest (5)",i);
+
+            packet.ReadByte("Unk Byte");
+            packet.ReadByte("Unk Byte");
+
+            packet.ReadInt32("Client Seed");
+
+            for (var i = 0; i < 2; i++)
+                packet.ReadByte("Digest (6)", i);
+
+            var pkt = new Packet(packet.ReadBytes(packet.ReadInt32()), packet.Opcode, packet.Time, packet.Direction, packet.Number, packet.Writer);
+            AddonHandler.ReadClientAddonsList(ref pkt);
+            packet.ReadByte("Mask"); // TODO: Seems to affect how the size is read
+            var size = (packet.ReadByte() >> 4);
+            packet.Writer.WriteLine("Size: " + size);
+            packet.Writer.WriteLine("Account name: {0}", Encoding.UTF8.GetString(packet.ReadBytes(size)));
+        }
+
         [Parser(Opcode.SMSG_AUTH_RESPONSE)]
         public static void HandleAuthResponse(Packet packet)
         {
@@ -194,6 +231,13 @@ namespace WowPacketParser.Parsing.Parsers
             
             packet.Writer.WriteLine("GUID: {0}", new Guid(BitConverter.ToUInt64(bytes, 0)));
         }
+
+        /*
+        [Parser(Opcode.CMSG_PLAYER_LOGIN, ClientVersionBuild.V4_3_0_15005)]
+        public static void HandlePlayerLogin430(Packet packet)
+        {
+        }
+        */
 
         [Parser(Opcode.SMSG_CHARACTER_LOGIN_FAILED)]
         public static void HandleLoginFailed(Packet packet)

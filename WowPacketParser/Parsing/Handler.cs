@@ -70,19 +70,23 @@ namespace WowPacketParser.Parsing
             writer = null;
         }
 
-        public static void Parse(Packet packet, bool headerOnly = false)
+        public static void Parse(Packet packet, bool headerOnly = false, bool isMultiple = false)
         {
             var opcode = packet.Opcode;
 
-            packet.Writer.WriteLine("{0}: {1} (0x{2}) Length: {3} Time: {4} Number: {5}",
+            packet.Writer.WriteLine("{0}: {1} (0x{2}) Length: {3} Time: {4} Number: {5}{6}",
                 packet.Direction, Opcodes.GetOpcodeName(opcode), opcode.ToString("X4"),
-                packet.GetLength(), packet.Time.ToString("MM/dd/yyyy HH:mm:ss.fff"), packet.Number);
+                packet.GetLength(), packet.Time.ToString("MM/dd/yyyy HH:mm:ss.fff"),
+                packet.Number, isMultiple ? " (part of another packet)" : "");
 
             if (headerOnly)
             {
-                lock (Handlers)
+                if (!isMultiple)
                 {
-                    Statistics.PacketsSuccessfullyParsed++;
+                    lock (Handlers)
+                    {
+                        Statistics.PacketsSuccessfullyParsed++;
+                    }
                 }
                 return;
             }
@@ -96,9 +100,12 @@ namespace WowPacketParser.Parsing
 
                     if (packet.GetPosition() == packet.GetLength())
                     {
-                        lock (Handlers)
+                        if (!isMultiple)
                         {
-                            Statistics.PacketsSuccessfullyParsed++;
+                            lock (Handlers)
+                            {
+                                Statistics.PacketsSuccessfullyParsed++;
+                            }
                         }
                     }
                     else
@@ -111,9 +118,12 @@ namespace WowPacketParser.Parsing
                         if (len < 300) // If the packet isn't "too big" and it is not full read, print its hex table
                             packet.Writer.WriteLine(packet.AsHex());
 
-                        lock (Handlers)
+                        if (!isMultiple)
                         {
-                            Statistics.PacketsParsedWithErrors++;
+                            lock (Handlers)
+                            {
+                                Statistics.PacketsParsedWithErrors++;
+                            }
                         }
                     }
                 }
@@ -123,18 +133,24 @@ namespace WowPacketParser.Parsing
                     packet.Writer.WriteLine(ex.Message);
                     packet.Writer.WriteLine(ex.StackTrace);
 
-                    lock (Handlers)
+                    if (!isMultiple)
                     {
-                        Statistics.PacketsParsedWithErrors++;
+                        lock (Handlers)
+                        {
+                            Statistics.PacketsParsedWithErrors++;
+                        }
                     }
                 }
             }
             else
             {
                 packet.Writer.WriteLine(packet.AsHex());
-                lock (Handlers)
+                if (!isMultiple)
                 {
-                    Statistics.PacketsNotParsed++;
+                    lock (Handlers)
+                    {
+                        Statistics.PacketsNotParsed++;
+                    }
                 }
             }
         }

@@ -7,6 +7,35 @@ namespace WowPacketParser.Parsing.Parsers
 {
     public static class MiscellaneousParsers
     {
+        [Parser(Opcode.SMSG_COMPRESSED_MULTIPLE_PACKETS)]
+        public static void HandleCompressedMultiplePackets(Packet packet)
+        {
+            HandleMultiplePackets(packet.Inflate(packet.ReadInt32()));
+        }
+
+        [Parser(Opcode.SMSG_MULTIPLE_PACKETS)]
+        public static void HandleMultiplePackets(Packet packet)
+        {
+            packet.Writer.WriteLine("{");
+            var i = 0;
+            while (packet.CanRead())
+            {
+                var opcode = packet.ReadUInt16();
+                // Why are there so many 0s in some packets? Should we have some check if opcode == 0 here?
+                var len = packet.ReadUInt16("Length", i);
+                var bytes = packet.ReadBytes(len);
+                var newpacket = new Packet(bytes, opcode, packet.Time, packet.Direction, packet.Number, packet.Writer);
+
+                if (i > 0)
+                    packet.Writer.WriteLine();
+
+                packet.Writer.Write("[{0}] ", i++);
+
+                Handler.Parse(newpacket, isMultiple: true);
+            }
+            packet.Writer.WriteLine("}");
+        }
+
         [Parser(Opcode.SMSG_STOP_DANCE)]
         [Parser(Opcode.SMSG_LEARNED_DANCE_MOVES)]
         [Parser(Opcode.SMSG_INVALIDATE_PLAYER)]

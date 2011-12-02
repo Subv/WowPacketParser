@@ -133,7 +133,9 @@ namespace WowPacketParser.Parsing.Parsers
             packet.ReadBoolean("Unk bool");
             packet.ReadBoolean("Enable Voice Chat");
 
-            if (ClientVersion.AddedInVersion(ClientVersionBuild.V4_2_0_14333))
+            if (ClientVersion.AddedInVersion(ClientVersionBuild.V4_2_2_14545))
+                packet.ReadInt32("Complain System Status");
+            else if (ClientVersion.AddedInVersion(ClientVersionBuild.V4_2_0_14333))
             {
                 packet.ReadByte("Complain System Status");
                 packet.ReadInt32("Unknown Mail Url Related Value");
@@ -521,8 +523,8 @@ namespace WowPacketParser.Parsing.Parsers
         [Parser(Opcode.SMSG_LOGOUT_CANCEL_ACK)]
         [Parser(Opcode.CMSG_WORLD_STATE_UI_TIMER_UPDATE)]
         [Parser(Opcode.CMSG_HEARTH_AND_RESURRECT)]
-        [Parser(Opcode.CMSG_LFD_PLAYER_LOCK_INFO_REQUEST)]
-        [Parser(Opcode.CMSG_LFD_PARTY_LOCK_INFO_REQUEST)]
+        [Parser(Opcode.CMSG_LFG_PLAYER_LOCK_INFO_REQUEST)]
+        [Parser(Opcode.CMSG_LFG_PARTY_LOCK_INFO_REQUEST)]
         [Parser(Opcode.CMSG_REQUEST_RAID_INFO)]
         [Parser(Opcode.CMSG_GMTICKET_GETTICKET)]
         [Parser(Opcode.CMSG_BATTLEFIELD_STATUS)]
